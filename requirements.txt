@@ -1,0 +1,30 @@
+#
+# 注意：
+# - 这个 requirements.txt 同时支持：
+#   1) 现有的 FastAPI 本地 Web 版（server.py）
+#   2) Hugging Face / Streamlit Spaces 的 RAG 版（app.py）
+#
+
+# --- Streamlit UI ---
+streamlit
+
+# --- LLM API（兼容 DeepSeek / OpenAI 风格接口）---
+openai
+
+# --- RAG（LangChain + FAISS + Embedding）---
+langchain
+langchain-community
+langchain-text-splitters
+faiss-cpu
+sentence-transformers
+
+# --- Utilities ---
+requests
+python-dotenv
+
+# --- 现有 FastAPI 本地版依赖（可保留）---
+fastapi==0.115.4
+uvicorn[standard]==0.30.6
+jinja2==3.1.4
+qrcode==7.4.2
+pillow==11.0.0

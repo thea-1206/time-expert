@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📅 年月日知识智能专家 | Time Expert AI</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Markdown-it -->
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it/dist/markdown-it.min.js"></script>
+    <!-- Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+        
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --bg-mesh: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0, transparent 50%), 
+                      radial-gradient(at 50% 0%, rgba(236, 72, 153, 0.1) 0, transparent 50%), 
+                      radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.15) 0, transparent 50%);
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background: #f8fafc;
+            background-image: var(--bg-mesh);
+            background-attachment: fixed;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .chat-bubble {
+            max-width: 85%;
+            position: relative;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .user-bubble {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.2);
+            border-radius: 20px 20px 4px 20px;
+        }
+
+        .bot-bubble {
+            background: white;
+            color: #1e293b;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-radius: 20px 20px 20px 4px;
+        }
+
+        .markdown-content p { margin-bottom: 0.75rem; }
+        .markdown-content p:last-child { margin-bottom: 0; }
+        .markdown-content strong { color: var(--primary-dark); font-weight: 700; }
+        .markdown-content ul, .markdown-content ol { padding-left: 1.25rem; margin-bottom: 0.75rem; border-left: 2px solid #e2e8f0; }
+
+        .typing-indicator span {
+            width: 6px; height: 6px; background: #94a3b8; border-radius: 50%; display: inline-block;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        .calendar-widget {
+            background: white; border-radius: 16px; padding: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #f1f5f9;
+        }
+
+        .quick-chip {
+            background: rgba(255, 255, 255, 0.8); border: 1px solid #e2e8f0;
+            transition: all 0.3s; cursor: pointer;
+        }
+        .quick-chip:hover {
+            background: white; border-color: var(--primary); color: var(--primary);
+            transform: translateY(-2px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .fade-slide-enter-active { animation: fadeInUp 0.4s ease-out; }
+        .mode-switch-active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+        /* API Status Dot */
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .status-online { background: #10b981; box-shadow: 0 0 8px #10b981; }
+        .status-offline { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+    </style>
+</head>
+<body class="h-screen flex items-center justify-center p-0 sm:p-4">
+    <div id="app" class="flex flex-col h-full max-h-[900px] w-full max-w-5xl glass-panel shadow-2xl rounded-none sm:rounded-[32px] overflow-hidden relative border-white border-2">
+        
+        <!-- Top Navigation / Header -->
+        <header class="px-6 py-4 flex justify-between items-center border-b border-slate-200/50 bg-white/40 backdrop-blur-md z-20 shrink-0">
+            <div class="flex items-center space-x-4">
+                <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-200 rotate-3">
+                    <i data-lucide="calendar" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-800 tracking-tight flex items-center">
+                        时间小管家 
+                        <span class="ml-2 px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] rounded-full uppercase tracking-wider font-bold">V2.5</span>
+                    </h1>
+                    <div class="flex items-center text-xs text-slate-500 mt-0.5" v-if="info">
+                        <span :class="info.has_api_key ? 'status-online' : 'status-offline'" class="status-dot"></span>
+                        [[ info.has_api_key ? '云端引擎在线' : '离线算法增强模式' ]]
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <!-- Mode Switcher -->
+                <div class="hidden md:flex bg-slate-100 p-1 rounded-xl">
+                    <button v-for="m in ['小学生', '家长']" :key="m" @click="mode = m"
+                        :class="mode === m ? 'mode-switch-active' : 'text-slate-500 hover:text-slate-700'"
+                        class="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-300">
+                        [[ m ]]
+                    </button>
+                </div>
+                
+                <!-- Info Button -->
+                <button @click="showInfo = true" class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
+                    <i data-lucide="qr-code" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Body -->
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Left Sidebar (Stats/Calendar) -->
+            <aside class="hidden lg:flex flex-col w-72 p-6 border-r border-slate-200/50 bg-slate-50/30 shrink-0">
+                <!-- Current Date Card -->
+                <div class="calendar-widget mb-6 text-center animate__animated animate__fadeInLeft">
+                    <div class="text-xs font-bold text-rose-500 uppercase tracking-widest mb-1">[[ currentMonth ]]</div>
+                    <div class="text-5xl font-black text-slate-800 mb-1">[[ currentDay ]]</div>
+                    <div class="text-sm font-medium text-slate-500">[[ currentWeekday ]]</div>
+                </div>
+
+                <!-- Features Info -->
+                <div class="space-y-4">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">核心技能</h3>
+                    <div v-for="skill in skills" :key="skill.title" class="flex items-center p-3 bg-white/60 rounded-2xl border border-white shadow-sm transition-transform hover:scale-[1.02]">
+                        <div :class="skill.color" class="w-8 h-8 rounded-lg flex items-center justify-center mr-3">
+                            <i :data-lucide="skill.icon" class="w-4 h-4"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-700">[[ skill.title ]]</span>
+                    </div>
+                </div>
+
+                <div class="mt-auto p-4 bg-indigo-600 rounded-2xl text-white shadow-xl shadow-indigo-100 relative overflow-hidden">
+                    <i data-lucide="sparkles" class="absolute -right-2 -bottom-2 w-16 h-16 opacity-20 rotate-12"></i>
+                    <p class="text-xs font-bold mb-1">今日小贴士</p>
+                    <p class="text-[11px] opacity-90 leading-relaxed">[[ dailyTip ]]</p>
+                </div>
+            </aside>
+
+            <!-- Chat Area -->
+            <main class="flex-1 flex flex-col relative bg-white/20">
+                <!-- Chat Messages -->
+                <div ref="chatContainer" class="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8 custom-scrollbar">
+                    <!-- Intro -->
+                    <div class="flex flex-col items-center justify-center text-center py-8 space-y-4 animate__animated animate__fadeIn">
+                        <div class="w-16 h-16 bg-white rounded-3xl flex items-center justify-center text-indigo-600 shadow-xl border border-slate-100 rotate-3">
+                            <i data-lucide="bot" class="w-8 h-8"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-slate-800">你好呀！我是你的时间管家</h2>
+                            <p class="text-sm text-slate-500 mt-2 max-w-xs mx-auto">我已经准备好为你解答所有关于年月日的问题了。你想先问问什么？</p>
+                        </div>
+                        <!-- Quick Reply Chips -->
+                        <div class="flex flex-wrap justify-center gap-2 max-w-lg mt-4">
+                            <div v-for="q in quickQuestions" :key="q" @click="sendQuick(q)" 
+                                class="quick-chip px-4 py-2 rounded-full text-xs font-medium text-slate-600 shadow-sm flex items-center space-x-2">
+                                <i data-lucide="message-square" class="w-3 h-3 text-indigo-400"></i>
+                                <span>[[ q ]]</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Messages Loop -->
+                    <transition-group name="fade-slide">
+                        <div v-for="(msg, index) in messages" :key="index" 
+                            :class="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'"
+                            class="animate__animated animate__fadeInUp animate__faster">
+                            <div class="flex flex-col max-w-[85%] space-y-1">
+                                <div :class="msg.role === 'user' ? 'user-bubble' : 'bot-bubble'" class="p-4 sm:p-5 shadow-sm">
+                                    <div v-if="msg.role === 'assistant'" class="markdown-content text-sm leading-relaxed" v-html="renderMd(msg.content)"></div>
+                                    <div v-else class="text-sm font-medium leading-relaxed">[[ msg.content ]]</div>
+                                </div>
+                                <div :class="msg.role === 'user' ? 'text-right mr-2' : 'ml-2'" class="text-[10px] text-slate-400 font-medium">
+                                    [[ msg.time ]]
+                                </div>
+                            </div>
+                        </div>
+                    </transition-group>
+
+                    <!-- Loading Indicator -->
+                    <div v-if="loading" class="flex justify-start animate__animated animate__fadeIn">
+                        <div class="bot-bubble p-4 px-6 flex items-center space-x-2">
+                            <div class="typing-indicator flex space-x-1">
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Field -->
+                <div class="p-4 sm:p-6 bg-white/60 backdrop-blur-md border-t border-slate-200/50">
+                    <form @submit.prevent="sendMessage" class="relative group">
+                        <input v-model="input" type="text" :placeholder="inputPlaceholder"
+                            :disabled="loading"
+                            class="w-full bg-white border-2 border-slate-100 pl-6 pr-14 py-4 rounded-[20px] text-sm font-medium focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm">
+                        <button type="submit" :disabled="!input.trim() || loading"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 hover:bg-indigo-700 disabled:bg-slate-300 disabled:shadow-none transition-all active:scale-95">
+                            <i data-lucide="arrow-up" class="w-5 h-5"></i>
+                        </button>
+                    </form>
+                    <div class="flex justify-between items-center px-2 mt-3">
+                        <div class="text-[10px] font-bold text-slate-400 flex items-center">
+                            <i data-lucide="shield-check" class="w-3 h-3 mr-1"></i> 
+                            确定性计算引擎已开启
+                        </div>
+                        <div class="flex items-center space-x-3 md:hidden">
+                            <button @click="mode = mode === '小学生' ? '家长' : '小学生'" class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">
+                                模式: [[ mode ]]
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Info Overlay -->
+        <transition name="animate__animated" enter-active-class="animate__fadeIn" leave-active-class="animate__fadeOut">
+            <div v-if="showInfo" class="absolute inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-6" @click.self="showInfo = false">
+                <div class="bg-white rounded-[32px] p-8 max-w-sm w-full text-center space-y-6 shadow-2xl animate__animated animate__zoomIn">
+                    <div class="w-16 h-16 bg-slate-100 rounded-2xl mx-auto flex items-center justify-center text-slate-400 relative">
+                        <i data-lucide="phone-forwarded" class="w-8 h-8"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">手机扫码使用</h3>
+                        <p class="text-sm text-slate-500 mt-2">在同一个 WiFi 下，你可以用手机扫码，随时随地问问题。</p>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-3xl flex justify-center border border-slate-100 shadow-inner">
+                        <img v-if="info" :src="info.qr_url" alt="QR" class="w-48 h-48 rounded-xl">
+                        <div v-else class="w-48 h-48 bg-slate-200 animate-pulse rounded-xl"></div>
+                    </div>
+                    <button @click="showInfo = false" class="w-full py-4 bg-slate-800 text-white rounded-2xl font-bold hover:bg-slate-900 transition-colors">
+                        我知道了
+                    </button>
+                </div>
+            </div>
+        </transition>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted, nextTick, watch, computed } = Vue;
+
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const input = ref('');
+                const messages = ref([]);
+                const loading = ref(false);
+                const mode = ref('小学生');
+                const showInfo = ref(false);
+                const info = ref(null);
+                const chatContainer = ref(null);
+                const md = window.markdownit({ html: true, linkify: true, breaks: true });
+
+                const now = new Date();
+                const currentMonth = computed(() => now.toLocaleDateString('zh-CN', { month: 'short' }));
+                const currentDay = computed(() => now.getDate());
+                const currentWeekday = computed(() => now.toLocaleDateString('zh-CN', { weekday: 'long' }));
+
+                const inputPlaceholder = computed(() => mode.value === '小学生' ? "问问关于时间的问题吧..." : "输入日期题目，获取专家解析...");
+
+                const skills = [
+                    { title: '平闰年判断', icon: 'zap', color: 'bg-amber-100 text-amber-600' },
+                    { title: '星期推算', icon: 'clock', color: 'bg-indigo-100 text-indigo-600' },
+                    { title: '节假日倒计时', icon: 'gift', color: 'bg-rose-100 text-rose-600' },
+                    { title: '保质期计算', icon: 'calendar-check', color: 'bg-emerald-100 text-emerald-600' }
+                ];
+
+                const quickQuestions = [
+                    "2024年是闰年吗？",
+                    "从今天算起100天后是哪天？",
+                    "明年儿童节是星期几？",
+                    "一年里有多少个大月？"
+                ];
+
+                const tips = [
+                    "四年一闰，百年不闰，四百年再闰。这是判断平闰年的黄金法则！",
+                    "一三五七八十腊（12月），三十一天永不差。这些是大月哦！",
+                    "算保质期时，通常要包含生产当天。别忘了‘+N-1’哦！",
+                    "每过一个平年，星期往后推一天；每过一个闰年，星期往后推两天。"
+                ];
+                const dailyTip = ref(tips[Math.floor(Math.random() * tips.length)]);
+
+                const fetchInfo = async () => {
+                    try {
+                        const res = await fetch('/api/info');
+                        const data = await res.json();
+                        info.value = data;
+                    } catch (e) { console.error(e); }
+                };
+
+                const renderMd = (content) => md.render(content);
+
+                const scrollToBottom = async () => {
+                    await nextTick();
+                    if (chatContainer.value) {
+                        chatContainer.value.scrollTo({
+                            top: chatContainer.value.scrollHeight,
+                            behavior: 'smooth'
+                        });
+                    }
+                };
+
+                const sendMessage = async () => {
+                    if (!input.value.trim() || loading.value) return;
+
+                    const userMsg = input.value;
+                    input.value = '';
+                    
+                    messages.value.push({
+                        role: 'user',
+                        content: userMsg,
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    });
+
+                    loading.value = true;
+                    await scrollToBottom();
+
+                    try {
+                        const res = await fetch('/api/chat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message: userMsg, mode: mode.value })
+                        });
+                        
+                        const data = await res.json();
+                        messages.value.push({
+                            role: 'assistant',
+                            content: data.answer,
+                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        });
+
+                        if (data.answer.includes('结论') || data.answer.includes('！')) {
+                            confetti({ particleCount: 60, spread: 80, origin: { y: 0.7 }, colors: ['#6366f1', '#4f46e5', '#818cf8'] });
+                        }
+                    } catch (e) {
+                        messages.value.push({
+                            role: 'assistant',
+                            content: '哎呀，网络开小差了，请稍后再试。',
+                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        });
+                    } finally {
+                        loading.value = false;
+                        await scrollToBottom();
+                    }
+                };
+
+                const sendQuick = (q) => {
+                    input.value = q;
+                    sendMessage();
+                };
+
+                onMounted(() => {
+                    fetchInfo();
+                    lucide.createIcons();
+                });
+
+                watch(messages, () => {
+                    nextTick(() => lucide.createIcons());
+                }, { deep: true });
+
+                return {
+                    input, messages, loading, mode, showInfo, info, 
+                    chatContainer, quickQuestions, skills, dailyTip,
+                    currentMonth, currentDay, currentWeekday, inputPlaceholder,
+                    renderMd, sendMessage, sendQuick
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
