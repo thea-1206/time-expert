@@ -1,14 +1,12 @@
 # 使用轻量级 Python 镜像
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
 # 设置工作目录
 WORKDIR /app
 
-# 安装必要的系统依赖 (如 faiss 等可能需要的组件)
-RUN apt-get update && apt-get install -y \
+# 安装必要的系统依赖
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    curl \
-    software-properties-common \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制依赖文件并安装
