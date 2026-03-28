@@ -11,12 +11,13 @@ streamlit
 # --- LLM API（兼容 DeepSeek / OpenAI 风格接口）---
 openai
 
-# --- RAG（LangChain + FAISS + Embedding）---
+# --- AI & RAG ---
 langchain
 langchain-community
+langchain-openai
 langchain-text-splitters
-faiss-cpu
 sentence-transformers
+# faiss-cpu 在 Vercel 上可能安装失败，我们改为使用更通用的内存检索
 
 # --- Utilities ---
 requests

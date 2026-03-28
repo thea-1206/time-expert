@@ -5,7 +5,8 @@ from datetime import date, timedelta
 from typing import List, Optional, Tuple, Iterable, Dict, Any
 from dataclasses import dataclass
 
-from langchain_community.vectorstores import FAISS
+# 使用更基础的 Docstore 向量库，避免依赖 faiss-cpu
+from langchain_community.vectorstores import DocArrayInMemorySearch
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
@@ -144,7 +145,8 @@ class DateAgent:
         split_docs = splitter.split_documents(docs)
         
         embeddings = HuggingFaceEmbeddings(model_name=self.config.embed_model)
-        self._vs = FAISS.from_documents(split_docs, embeddings)
+        # 将 FAISS 换成 DocArrayInMemorySearch，它是纯 Python 实现，在云端更稳定
+        self._vs = DocArrayInMemorySearch.from_documents(split_docs, embeddings)
         return self._vs
 
     def detect_and_compute(self, text: str) -> Dict[str, Any]:
